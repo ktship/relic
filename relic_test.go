@@ -1,8 +1,10 @@
 package relic
 import (
+	"testing"
 	"strconv"
 	"runtime"
 	"fmt"
+	"math/rand"
 )
 
 const isExpertMode = false
@@ -21,12 +23,23 @@ const isExpertMode = false
  */
 
 type client struct {
-	uid				int
-	relics			map[relicID]map[itemID]itemStatus
+	uid			int
+	relic0		map[itemID]itemStatus
+	relic1		map[itemID]itemStatus
+}
+
+func newClient(uid int) *client {
+	return &client {
+		uid 	: uid,
+		relic0 	: make(map[itemID]itemStatus),
+		relic1 	: make(map[itemID]itemStatus),
+	}
 }
 
 func init() {
 	fmt.Printf("Running On %s, %s, %s, %d-bit \n", runtime.Compiler, runtime.GOARCH, runtime.GOOS, strconv.IntSize)
+	// 랜덤 함수의 값을 고정시킴.
+	rand.Seed(0)
 
 	// item 가치 테이블
 	// 0:1000, 1:900, 2:800, 3:500, 4:300, 5:200, 6:100, 7:50, 8:20, 9:10
@@ -64,3 +77,7 @@ func init() {
 	AddRelic(0, &relic1)
 }
 
+func Test000_relic0(t *testing.T) { 
+	client0 := newClient(123)
+	
+}
