@@ -27,3 +27,12 @@ const (
 	StatusException = 2
 )
 
+// GachaRelic : 유물 뽑기 
+func (r *Relic)GachaRelic(uid int, rid int) (int, error) {
+	return 0, nil
+}
+
+// GachaRelic : 유물 뽑기
+func (r *Relic)GetRelicProb(uid int, rid int) map[int]int {
+	return 0, nil
+}

@@ -5,14 +5,17 @@ import (
 	"runtime"
 	"fmt"
 	"math/rand"
+	"github.com/ktship/testio"
 )
 
 const isExpertMode = false
 
+var client0 *client
+
 /*
 가챠(유물) 시스템 테스트
 	데이터
-	 유물 0번, 반복 OK, 아이템 : 0, 1, 2, 3, 레어 아이템 : 0, 1
+	 유물 0번, 반복 OK, 아이템 : 0, 2, 6, 7, 레어 아이템 : 0, 2
 	 유물 1번, 반복 NO, 아이템 : 0, 3, 6, 기본 아이템 : 7, 8, 9
 기본 테스트
 	1. 클라이언트 0, 1로 0.1 정도의 랜덤 간격으로 계속 뽑음. (기본 모드)
@@ -24,16 +27,21 @@ const isExpertMode = false
 
 type client struct {
 	uid			int
-	relic0		map[itemID]itemStatus
-	relic1		map[itemID]itemStatus
+	relics		map[relicID]map[itemID]itemStatus
 }
 
 func newClient(uid int) *client {
 	return &client {
 		uid 	: uid,
-		relic0 	: make(map[itemID]itemStatus),
-		relic1 	: make(map[itemID]itemStatus),
+		relics 	: make(map[relicID]map[itemID]itemStatus),
 	}
+}
+
+func (c *client)setItemStatus(rid relicID, iid itemID, is itemStatus) {
+	if _, ok := c.relics[rid]; !ok {
+		c.relics[rid] = make(map[itemID]itemStatus)
+	}
+	c.relics[rid][iid] = is
 }
 
 func init() {
@@ -49,7 +57,7 @@ func init() {
 	SetItemVal(3, 500)
 	SetItemVal(4, 300)
 	SetItemVal(5, 200)
-	SetItemVal(6, 100)
+	SetItemVal(6, 150)
 	SetItemVal(7, 50)
 	SetItemVal(8, 20)
 	SetItemVal(9, 10)
@@ -75,9 +83,23 @@ func init() {
 		baseItemList	: []int{7, 8, 9},
 	}
 	AddRelic(0, &relic1)
+	
+	client0 = newClient(111)
 }
 
+// 50, 40, 7.5, 2.5
 func Test000_relic0(t *testing.T) { 
-	client0 := newClient(123)
-	
+	tio := testio.New()
+	relic := New(tio)
+
+	prob := relic.GetRelicProb(client0.uid, 0);
+	total := 0
+	for _,v := range prob {
+		total += v
+	}
+	if total != 100 {
+		t.Fatalf("total must be 100.. total : %d", total)
+	}
 }
+
+
