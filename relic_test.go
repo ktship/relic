@@ -27,21 +27,21 @@ var client0 *client
 
 type client struct {
 	uid			int
-	relics		map[relicID]map[itemID]itemStatus
+	relics		map[int]map[int]int
 }
 
 func newClient(uid int) *client {
 	return &client {
 		uid 	: uid,
-		relics 	: make(map[relicID]map[itemID]itemStatus),
+		relics 	: make(map[int]map[int]int),
 	}
 }
 
-func (c *client)setItemStatus(rid relicID, iid itemID, is itemStatus) {
-	if _, ok := c.relics[rid]; !ok {
-		c.relics[rid] = make(map[itemID]itemStatus)
+func (c *client)setItemStatus(relicID int, itemID int, status int) {
+	if _, ok := c.relics[relicID]; !ok {
+		c.relics[relicID] = make(map[int]int)
 	}
-	c.relics[rid][iid] = is
+	c.relics[relicID][itemID] = status
 }
 
 func init() {
@@ -92,14 +92,49 @@ func Test000_relic0(t *testing.T) {
 	tio := testio.New()
 	relic := New(tio)
 
-	prob := relic.GetRelicProb(client0.uid, 0);
-	total := 0
-	for _,v := range prob {
-		total += v
+	rid := 0
+	probList := relic.GetRelicProb(client0.uid, rid)
+	checkProbList(t, rid, probList)
+	iid, err := relic.GachaRelic(client0.uid, rid)
+	if err != nil {
+		t.Fatalf("err occured:%s", err)
 	}
-	if total != 100 {
-		t.Fatalf("total must be 100.. total : %d", total)
+	checkGachaRelic(t, rid, iid)
+}
+
+func checkProbList(t *testing.T, rid int, probL []relicProb) {
+	// 1 확률 리스트 기본 : 아이템이 하나이상이라야 함
+	if len(probL) < 1 {
+		t.Fatalf("아이템이 하나이상이라야 함 rid:%d", rid)
+	}
+	// 2 확률 리스트 기본 : 아이템이 하나일때는 확률은 그냥 1임.
+	if len(probL) == 1 {
+		if probL[0].prob != 1 {
+			t.Fatalf("아이템이 하나라야 함 rid:%d", rid)
+		}
+	}
+	// 모든 아이템에 대해,
+	for i,v := range probL {
+		// 3 확률 리스트 기본 : 아이템의 확률은 무조건 0보다 커야 함
+		if v <= 0 {
+			t.Fatalf("아이템의 확률은 무조건 0보다 커야 함 rid:%d i:%d", rid, i)
+		}
+		// 3 확률 리스트 기본 : 뒤의 확률은 무조건 앞 확률보다 커야함
+		if i+1 < len(probL) {
+			if probL[i].prob >= probL[i+1].prob {
+				t.Fatalf("앞의 확률은 무조건 뒤 확률보다 커야함. rid:%d, i:%d, v:%f, i+1:%d, v+1:%f", rid, i, probL[i].prob, i+1, probL[i+1].prob)
+			}
+		}
 	}
 }
+
+func checkGachaRelic(t *testing.T, relicID int, itemID int) {
+	// 1. itemID가 이미 뽑힌 상태여야 함.
+
+	// 2. itemID는 Exception 상태가 아니어야 함.
+
+	//
+}
+
 
 
