@@ -99,7 +99,7 @@ func Test000_relic0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err occured:%s", err)
 	}
-	checkGachaRelic(t, rid, iid)
+	checkGachaRelic(t, rid, iid, probList)
 }
 
 func checkProbList(t *testing.T, rid int, probL []relicProb) {
@@ -128,12 +128,14 @@ func checkProbList(t *testing.T, rid int, probL []relicProb) {
 	}
 }
 
-func checkGachaRelic(t *testing.T, relicID int, itemID int) {
+func checkGachaRelic(t *testing.T, relicID int, itemID int, probL []relicProb) {
 	// 1. itemID가 이미 뽑힌 상태여야 함.
 
-	// 2. itemID는 Exception 상태가 아니어야 함.
+	// 2. itemID가 probL에는 없는 상태여아 함.( 뽑히기 전 타이밍이므로)
 
-	//
+	// 3. itemID는 Exception 상태가 아니어야 함.
+
+	// 4. relicProb List 에는 itemID 값이 들어 있어야함.
 }
 
 
