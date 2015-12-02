@@ -21,7 +21,10 @@ type TableSuite struct {
 	client *client
 }
 var _ = gc.Suite(&TableSuite {
-	client : newClient(111, 0),
+	client : newClient(1, 0),
+})
+var _ = gc.Suite(&TableSuite {
+	client : newClient(2, 0),
 })
 
 /*
@@ -34,9 +37,7 @@ var _ = gc.Suite(&TableSuite {
 	  4 확률 리스트 기본 : 뒤의 확률은 무조건 앞 확률보다 커야함
 	2. 뽑힌 아이템이 정당한지 확인
 	 1. itemID가 이미 뽑힌 상태여야 함.
-	 2. itemID가 probL에는 없는 상태여아 함.( 뽑히기 전 타이밍이므로)
-	 3. itemID는 Exception 상태가 아니어야 함.
-	 4. relicProb List 에는 itemID 값이 들어 있어야함.
+	 2. prob 리스트에는 itemID 값이 들어 있어야함.
 */
 
 type client struct {
@@ -109,15 +110,18 @@ func (s *TableSuite) Test001_DynamoDBIO(c *gc.C) {
 
 	rid := 0
 	probList := relic.GetRelicProb(s.client.uid, rid)
-	checkProbList(c, rid, probList)
+	// 확률 리스트에 대한 검사
+	s.checkProbList(c, rid, probList)
 	iid, err := relic.GachaRelic(s.client.uid, rid)
-	if err != nil {
-		c.Fatalf("err occured:%s", err)
-	}
-	checkGachaRelic(c, rid, iid, probList)
+	c.Assert(err, gc.IsNil)
+	// 뽑힌 아이템의 정당성 검사
+	s.checkGachaRelic(c, tio, s.client.uid, rid, iid, probList)
+	probList = relic.GetRelicProb(s.client.uid, rid)
+	// 뽑힌 아이템을 제외한 확률 리스트인지 확인
+	s.checkPostGachaRelic(c, tio, s.client.uid, rid, iid, probList)
 }
 
-func checkProbList(c *gc.C, rid int, probL []relicProb) {
+func (s *TableSuite)checkProbList(c *gc.C, rid int, probL []relicProb) {
 	// 1 확률 리스트 기본 : 아이템이 하나이상이라야 함
 	if len(probL) < 1 {
 		c.Fatalf("아이템이 하나이상이라야 함 rid:%d", rid)
@@ -143,14 +147,18 @@ func checkProbList(c *gc.C, rid int, probL []relicProb) {
 	}
 }
 
-func checkGachaRelic(c *gc.C, relicID int, itemID int, probL []relicProb) {
-	// 1. itemID가 이미 뽑힌 상태여야 함.
-	
-	// 2. itemID가 probL에는 없는 상태여아 함.( 뽑히기 전 타이밍이므로)
+func (s *TableSuite)checkGachaRelic(c *gc.C, io relicIO, uid int, relicID int, itemID int, probL []relicProb) {
+	// 1. itemID가 뽑힌 상태여야 함.
+	dat, err := io.ReadUserAttr(uid, relicID)
+	c.Assert(err, gc.IsNil)
+	strItemID := strconv.Itoa(itemID)
+	status, ok := dat[strItemID]
+	// itemID는 유저 데이터에 
+	c.Assert(ok, gc.Equals, true)
+	// itemID는 Exception 상태가 아니라 반드시 뽑힌 
+	c.Assert(status, gc.Equals, StatusSelected)
 
-	// 3. itemID는 Exception 상태가 아니어야 함.
-
-	// 4. relicProb List 에는 itemID 값이 들어 있어야함.
+	// 2. probL에는 itemID 값이 들어 있어야함.
 	isIn := false
 	for i,v := range probL {
 		if v.iid == itemID {
@@ -160,5 +168,14 @@ func checkGachaRelic(c *gc.C, relicID int, itemID int, probL []relicProb) {
 	c.Assert(isIn, gc.Equals, true)
 }
 
-
+func (s *TableSuite)checkPostGachaRelic(c *gc.C, io relicIO, uid int, relicID int, itemID int, probL []relicProb) {
+	// 1. probL에는 itemID 값이 없어야함
+	isIn := false
+	for i,v := range probL {
+		if v.iid == itemID {
+			isIn = true
+		}
+	}
+	c.Assert(isIn, gc.Equals, false)
+}
 
