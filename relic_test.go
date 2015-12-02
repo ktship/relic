@@ -6,34 +6,51 @@ import (
 	"fmt"
 	"math/rand"
 	"github.com/ktship/testio"
+	gc "gopkg.in/check.v1"
 )
 
 const isExpertMode = false
 
-var client0 *client
+func (s *TableSuite) SetUpSuite(c *gc.C) {}
+func (s *TableSuite) SetUpTest(c *gc.C) {}
+func (s *TableSuite) TearDownTest(c *gc.C) {}
+func (s *TableSuite) TearDownSuite(c *gc.C) {}
+func Test(t *testing.T) { gc.TestingT(t) }
+
+type TableSuite struct {
+	client *client
+}
+var _ = gc.Suite(&TableSuite {
+	client : newClient(111, 0),
+})
 
 /*
 가챠(유물) 시스템 테스트
-	데이터
-	 유물 0번, 반복 OK, 아이템 : 0, 2, 6, 7, 레어 아이템 : 0, 2
-	 유물 1번, 반복 NO, 아이템 : 0, 3, 6, 기본 아이템 : 7, 8, 9
-기본 테스트
-	1. 클라이언트 0, 1로 0.1 정도의 랜덤 간격으로 계속 뽑음. (기본 모드)
-	   유물 0은 처음은 모두 뽑히고, 이후로는 2, 3만 뽑히게 되는지 확인. 
-	   각 뽑기 할때마다 각 아이템들의 확률이 맞는지를 확인. 3번씩 반복.
-	2. 5초 랜덤 간격으로 뽑음. (클라이언트0과 동시에 함.고급 모드)
-	   각 뽑기 할때마다 각 아이템들의 확률이 맞는지를 확인. 1분간 확인.
- */
+	1. 각 아이템들의 확률 확인
+	  1 확률 리스트 기본 : 아이템이 하나이상이라야 함
+	  2 확률 리스트 기본 : 아이템이 하나일때는 확률은 그냥 1임.
+	  모든 아이템에 대해,
+	  3 확률 리스트 기본 : 아이템의 확률은 무조건 0보다 커야 함
+	  4 확률 리스트 기본 : 뒤의 확률은 무조건 앞 확률보다 커야함
+	2. 뽑힌 아이템이 정당한지 확인
+	 1. itemID가 이미 뽑힌 상태여야 함.
+	 2. itemID가 probL에는 없는 상태여아 함.( 뽑히기 전 타이밍이므로)
+	 3. itemID는 Exception 상태가 아니어야 함.
+	 4. relicProb List 에는 itemID 값이 들어 있어야함.
+*/
 
 type client struct {
 	uid			int
 	relics		map[int]map[int]int
+	// 유물뽑기 작업을 연속으로 실행시에 평균 딜레이 시간 
+	delayCall	int
 }
 
-func newClient(uid int) *client {
+func newClient(uid int, dc int) *client {
 	return &client {
 		uid 	: uid,
 		relics 	: make(map[int]map[int]int),
+		delayCall : dc,
 	}
 }
 
@@ -83,59 +100,64 @@ func init() {
 		baseItemList	: []int{7, 8, 9},
 	}
 	AddRelic(0, &relic1)
-	
-	client0 = newClient(111)
 }
 
 // 50, 40, 7.5, 2.5
-func Test000_relic0(t *testing.T) { 
+func (s *TableSuite) Test001_DynamoDBIO(c *gc.C) {
 	tio := testio.New()
 	relic := New(tio)
 
 	rid := 0
-	probList := relic.GetRelicProb(client0.uid, rid)
-	checkProbList(t, rid, probList)
-	iid, err := relic.GachaRelic(client0.uid, rid)
+	probList := relic.GetRelicProb(s.client.uid, rid)
+	checkProbList(c, rid, probList)
+	iid, err := relic.GachaRelic(s.client.uid, rid)
 	if err != nil {
-		t.Fatalf("err occured:%s", err)
+		c.Fatalf("err occured:%s", err)
 	}
-	checkGachaRelic(t, rid, iid, probList)
+	checkGachaRelic(c, rid, iid, probList)
 }
 
-func checkProbList(t *testing.T, rid int, probL []relicProb) {
+func checkProbList(c *gc.C, rid int, probL []relicProb) {
 	// 1 확률 리스트 기본 : 아이템이 하나이상이라야 함
 	if len(probL) < 1 {
-		t.Fatalf("아이템이 하나이상이라야 함 rid:%d", rid)
+		c.Fatalf("아이템이 하나이상이라야 함 rid:%d", rid)
 	}
 	// 2 확률 리스트 기본 : 아이템이 하나일때는 확률은 그냥 1임.
 	if len(probL) == 1 {
 		if probL[0].prob != 1 {
-			t.Fatalf("아이템이 하나라야 함 rid:%d", rid)
+			c.Fatalf("아이템이 하나라야 함 rid:%d", rid)
 		}
 	}
 	// 모든 아이템에 대해,
 	for i,v := range probL {
 		// 3 확률 리스트 기본 : 아이템의 확률은 무조건 0보다 커야 함
-		if v <= 0 {
-			t.Fatalf("아이템의 확률은 무조건 0보다 커야 함 rid:%d i:%d", rid, i)
+		if v.prob <= 0 {
+			c.Fatalf("아이템의 확률은 무조건 0보다 커야 함 rid:%d i:%d", rid, i)
 		}
 		// 3 확률 리스트 기본 : 뒤의 확률은 무조건 앞 확률보다 커야함
 		if i+1 < len(probL) {
 			if probL[i].prob >= probL[i+1].prob {
-				t.Fatalf("앞의 확률은 무조건 뒤 확률보다 커야함. rid:%d, i:%d, v:%f, i+1:%d, v+1:%f", rid, i, probL[i].prob, i+1, probL[i+1].prob)
+				c.Fatalf("앞의 확률은 무조건 뒤 확률보다 커야함. rid:%d, i:%d, v:%f, i+1:%d, v+1:%f", rid, i, probL[i].prob, i+1, probL[i+1].prob)
 			}
 		}
 	}
 }
 
-func checkGachaRelic(t *testing.T, relicID int, itemID int, probL []relicProb) {
+func checkGachaRelic(c *gc.C, relicID int, itemID int, probL []relicProb) {
 	// 1. itemID가 이미 뽑힌 상태여야 함.
-
+	
 	// 2. itemID가 probL에는 없는 상태여아 함.( 뽑히기 전 타이밍이므로)
 
 	// 3. itemID는 Exception 상태가 아니어야 함.
 
 	// 4. relicProb List 에는 itemID 값이 들어 있어야함.
+	isIn := false
+	for i,v := range probL {
+		if v.iid == itemID {
+			isIn = true
+		}
+	}
+	c.Assert(isIn, gc.Equals, true)
 }
 
 
