@@ -41,7 +41,8 @@ func (r *Relic)GachaRelic(uid int, rid int) (int, error) {
 	return 0, nil
 }
 
-// GachaRelic : 유물 뽑기
+// GetRelicProb : 유물 확률 리스트 
 func (r *Relic)GetRelicProb(uid int, rid int) []relicProb {
-	return 0, nil
+	ret := []relicProb {}
+	return ret
 }

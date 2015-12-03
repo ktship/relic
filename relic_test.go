@@ -11,10 +11,14 @@ import (
 
 const isExpertMode = false
 
-func (s *TableSuite) SetUpSuite(c *gc.C) {}
-func (s *TableSuite) SetUpTest(c *gc.C) {}
-func (s *TableSuite) TearDownTest(c *gc.C) {}
-func (s *TableSuite) TearDownSuite(c *gc.C) {}
+func (s *TableSuite) SetUpSuite(c *gc.C) {
+}
+func (s *TableSuite) SetUpTest(c *gc.C) {
+}
+func (s *TableSuite) TearDownTest(c *gc.C) {
+}
+func (s *TableSuite) TearDownSuite(c *gc.C) {
+}
 func Test(t *testing.T) { gc.TestingT(t) }
 
 type TableSuite struct {
@@ -104,7 +108,24 @@ func init() {
 }
 
 // 50, 40, 7.5, 2.5
-func (s *TableSuite) Test001_DynamoDBIO(c *gc.C) {
+func (s *TableSuite) Test001_ContinualCall(c *gc.C) {
+	tio := testio.New()
+	relic := New(tio)
+
+	rid := 0
+	probList := relic.GetRelicProb(s.client.uid, rid)
+	// 확률 리스트에 대한 검사
+	s.checkProbList(c, rid, probList)
+	iid, err := relic.GachaRelic(s.client.uid, rid)
+	c.Assert(err, gc.IsNil)
+	// 뽑힌 아이템의 정당성 검사
+	s.checkGachaRelic(c, tio, s.client.uid, rid, iid, probList)
+	probList = relic.GetRelicProb(s.client.uid, rid)
+	// 뽑힌 아이템을 제외한 확률 리스트인지 확인
+	s.checkPostGachaRelic(c, tio, s.client.uid, rid, iid, probList)
+}
+
+func (s *TableSuite) Test002_RandomCall(c *gc.C) {
 	tio := testio.New()
 	relic := New(tio)
 
@@ -160,7 +181,7 @@ func (s *TableSuite)checkGachaRelic(c *gc.C, io relicIO, uid int, relicID int, i
 
 	// 2. probL에는 itemID 값이 들어 있어야함.
 	isIn := false
-	for i,v := range probL {
+	for _, v := range probL {
 		if v.iid == itemID {
 			isIn = true
 		}
@@ -171,7 +192,7 @@ func (s *TableSuite)checkGachaRelic(c *gc.C, io relicIO, uid int, relicID int, i
 func (s *TableSuite)checkPostGachaRelic(c *gc.C, io relicIO, uid int, relicID int, itemID int, probL []relicProb) {
 	// 1. probL에는 itemID 값이 없어야함
 	isIn := false
-	for i,v := range probL {
+	for _, v := range probL {
 		if v.iid == itemID {
 			isIn = true
 		}
