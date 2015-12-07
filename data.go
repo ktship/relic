@@ -6,10 +6,8 @@ var itemValueMap = make(map[int]int)
 type relicInfo struct {
 	// 아이템 다 뽑으면 반복하는거임? 아니면 baseItem만 주는 거임?
 	isRepeatType	bool
-	// 아이템 리스트
+	// 아이템 리스트 : isRepeatType 이 아닐때 2번째 턴부터는 의미없음
 	itemList 		[]int
-	// 레어한 아이템 리스트임. 반복 되더라도 이건 다시 안 주는 아이템 리스트.
-	rareItemList	[]int
 	// 반복 안 할시에 기본으로 보상해줄 아이템 리스트
 	baseItemList	[]int
 }
